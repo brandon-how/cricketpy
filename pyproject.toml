@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Python replication of cricketdata R package"
 authors = ["Brandon Hao <brandonhao25@gmail.com>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12"
