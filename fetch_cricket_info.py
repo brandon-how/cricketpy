@@ -13,6 +13,11 @@ env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
 env = os.getenv("env")
 
+# %%
+url = "https://stats.espncricinfo.com/ci/engine/stats/index.html?class=2;page=2;size=200;team=40;template=results;type=batting;wrappertype=print"
+page = requests.get(url)
+soup = BeautifulSoup(page.content, "html.parser")
+
 
 # %%
 def webscrape_article(
