@@ -1,19 +1,17 @@
 # %%
 import requests
 from bs4 import BeautifulSoup
-from google.cloud import bigquery
 import pandas as pd
-import time
 import os
 import sys
 from math import floor
 from pathlib import Path
-from typing import Tuple
+from dotenv import load_dotenv
 
-env_path = Path(__file__).parent.parent.parent / ".env"
+# Set environment
+env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
 env = os.getenv("env")
-
 
 
 # %%
