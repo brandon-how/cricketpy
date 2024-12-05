@@ -14,9 +14,10 @@ load_dotenv(env_path)
 env = os.getenv("env")
 
 # %%
-url = "https://stats.espncricinfo.com/ci/engine/stats/index.html?class=2;page=2;size=200;team=40;template=results;type=batting;wrappertype=print"
-page = requests.get(url)
-soup = BeautifulSoup(page.content, "html.parser")
+url = "https://stats.espncricinfo.com/ci/engine/stats/index.html?class=1;page=1;size=200;template=results;type=batting;wrappertype=print"
+pd.read_html(url)
+# page = requests.get(url)pip
+# soup = BeautifulSoup(page.content, "html.parser")
 
 
 # %%
