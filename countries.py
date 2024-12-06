@@ -48,7 +48,7 @@ women = {
 }
 
 
-def rename_countries(country: str) -> str:
+def rename_country(country: str) -> str:
     """
     Standardizes and replaces country abbreviations or shorthand with their full names.
 
