@@ -7,6 +7,10 @@ import sys
 from math import floor
 from pathlib import Path
 from dotenv import load_dotenv
+from urllib.parse import urljoin
+from countries import *
+from difflib import get_close_matches
+
 
 # Set environment
 env_path = Path(__file__).parent / ".env"
@@ -14,8 +18,49 @@ load_dotenv(env_path)
 env = os.getenv("env")
 
 # %%
+# Set up for test cases
+matchtype = "test"  # ["test", "odi", "t20"]
+sex = "men"  # ["men", "women"]
+country = None
+activity = "batting"  # ["batting", "bowling", "fielding"]
+view = "career"  # ["career", "innings"]
 
-url = "https://stats.espncricinfo.com/ci/engine/stats/index.html?class=1;page=1;size=200;template=results;type=batting;wrappertype=print"
+# Transform everything to lower case
+matchtype = matchtype.lower()
+sex = sex.lower()
+activity = activity.lower()
+view = view.lower()
+
+# View text
+view_text = ";view=innings" if view == "innings" else ""
+
+# URL signifier for match type
+matchclass = ["test", "odi", "t20"].index(matchtype) + 1 + 7 * (sex == "women")
+
+# Team number matching for input country
+if country is not None:
+    country_sex = men if sex == "men" else women
+    # Get closest country match
+    country_match = get_close_matches(
+        country.lower(), [x.lower() for x in country_sex.keys()], n=1, cutoff=0.5
+    )
+    if len(country_match) == 0 or country_match[0].title() not in country_sex.keys():
+        raise ValueError("Country not found")
+    # Get team code and team URL segment
+    team = country_sex[country_match[0].title()]
+    team_text = f";team={team}"
+else:
+    team_text = ""
+
+# Define base URL
+base_url = "https://stats.espncricinfo.com/ci/engine/stats/index.html"
+
+# Start page
+page = 1
+
+# %%
+# Modify URL based on type of info selected
+url = f"{base_url}?class={matchclass}{team_text};page={page};template=results;type={activity}{view_text};wrappertype=print"
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
@@ -23,6 +68,10 @@ headers = {
 
 page = requests.get(url, headers=headers)
 soup = BeautifulSoup(page.content, "html.parser")
+page.ok
+
+# %%
+# Get url
 
 
 # %%
