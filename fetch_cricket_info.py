@@ -184,8 +184,15 @@ def fetch_cricket_data(
     activity = activity.lower()
     view = view.lower()
 
-    # View text
-    view_text = ";view=innings" if view == "innings" else ""
+    # View text and max pagination
+    if view == "innings":
+        view_text = ";view=innings"
+        max_pages = 1000
+    else:
+        view_text = "" 
+        max_pages = 100
+    
+    if view == "innings" else ""
 
     # URL signifier for match type
     matchclass = ["test", "odi", "t20"].index(matchtype) + 1 + 7 * (sex == "women")
@@ -220,10 +227,9 @@ def fetch_cricket_data(
     table_store = {}
     page_num = 1
     theend = False
-    MAX_PAGES = 100
 
     # Pagination
-    while not theend and page_num <= MAX_PAGES:
+    while not theend and page_num <= max_pages:
 
         # Modify URL based on type of info selected
         url = f"{base_url}?class={matchclass}{team_text};page={page_num};template=results;type={activity}{view_text};wrappertype=print"
