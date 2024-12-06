@@ -187,7 +187,7 @@ def fetch_cricket_data(
     # View text and max pagination
     if view == "innings":
         view_text = ";view=innings"
-        max_pages = 1000
+        max_pages = 3000
     else:
         view_text = "" 
         max_pages = 100
