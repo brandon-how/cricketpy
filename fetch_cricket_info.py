@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from urllib.parse import urljoin
 from countries import *
 from difflib import get_close_matches
+from io import StringIO
 
 
 # Set environment
@@ -55,75 +56,46 @@ else:
 # Define base URL
 base_url = "https://stats.espncricinfo.com/ci/engine/stats/index.html"
 
-# Start page
-page = 1
-
-# %%
-# Modify URL based on type of info selected
-url = f"{base_url}?class={matchclass}{team_text};page={page};template=results;type={activity}{view_text};wrappertype=print"
-
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
 }
 
-page = requests.get(url, headers=headers)
-soup = BeautifulSoup(page.content, "html.parser")
-page.ok
+# Table store
+table_store = {}
 
-# %%
-# Get url
+# Start page
+page_num = 1
 
+theend = False
+while not theend:
 
-# %%
-def webscrape_article(
-    url: str,
-) -> pd.DataFrame:
-    """
-    For a given CIDRAP article URL get all the data
+    # Modify URL based on type of info selected
+    url = f"{base_url}?class={matchclass}{team_text};page={page_num};template=results;type={activity}{view_text};wrappertype=print"
 
-    Args:
-        url (str): URL of the CIDRAP article to scrape
+    # Send request and check errors
+    page = requests.get(url, headers=headers)
 
-    Returns:
-        pd.DataFrame: dataframe of the data
-    """
+    if not page.ok:
+        raise RuntimeError(f"Error {page.status_code} in URL")
 
-    page = requests.get(url)
-    soup = BeautifulSoup(page.content, "html.parser")
+    # soup = BeautifulSoup(page.content, "html.parser")
 
-    # Some article pages are same day pages, that render other articles below main content which will be parsed with their own URL
-    div_to_delete = soup.find("section", class_="region-below-content")
-    # Check if the element exists and delete it and its children
-    if div_to_delete:
-        div_to_delete.decompose()
+    # Read table from HTML
+    tables = pd.read_html(StringIO(page.text))
+    data = tables[2]
 
-    title = soup.find("h1").text.strip()
-    author = (
-        soup.select_one(".field--name-field-bio-name a").text.strip()
-        if soup.select_one(".field--name-field-bio-name a")
-        else None
-    )
-    datetime = soup.find("time")["datetime"]
-    # Topic not always present. add for fault tolerance
-    topic_element = soup.select_one(".field--name-field-related-topics a")
-    topic = topic_element.text.strip() if topic_element else None
+    # Make everything string for now
+    data = data.astype(str)
 
-    # Extract all paragraph texts
-    article_text_elements = soup.select(".group-right .field--name-field-body p")
-    # article_text = [p.get_text(strip=True) for p in article_text_elements]
-    article_text = " ".join(p.get_text(strip=True) for p in article_text_elements)
+    # Check if extract data is empty
+    if data.shape == (1, 1):
+        if page == 1:
+            raise RuntimeError("No data available")
+        break
 
-    # Create DataFrame
-    data = {
-        "title": [title],
-        "author": [author],
-        "date_time": [datetime],
-        "topic": [topic],
-        "article_text": [article_text],
-        "article_url": url,
-        "article_source": "cidrap",
-    }
+    # Append data
+    table_store[page_num] = data
+    page_num += 1
 
-    df = pd.DataFrame(data)
-
-    return df
+# Concat
+scraped = pd.concat(table_store).reset_index(drop=True)
