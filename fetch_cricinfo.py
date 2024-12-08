@@ -17,7 +17,7 @@ env = os.getenv("env")
 
 
 # %%
-def fetch_cricket_data(
+def fetch_cricinfo(
     matchtype: Literal["test", "odi", "t20"],
     sex: Literal["men", "women"],
     activity: Literal["batting", "bowling", "fielding"],
@@ -60,7 +60,7 @@ def fetch_cricket_data(
     Examples:
         Fetch batting data for men's Test matches for England:
 
-        >>> fetch_cricket_data(
+        >>> fetch_cricinfo(
         ...     matchtype="test",
         ...     sex="men",
         ...     activity="batting",
@@ -70,7 +70,7 @@ def fetch_cricket_data(
 
         Fetch bowling data for women's T20 matches across all countries:
 
-        >>> fetch_cricket_data(
+        >>> fetch_cricinfo(
         ...     matchtype="t20",
         ...     sex="women",
         ...     activity="bowling",
