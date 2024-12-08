@@ -15,6 +15,7 @@ env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
 env = os.getenv("env")
 
+
 # %%
 def fetch_cricket_data(
     matchtype: Literal["test", "odi", "t20"],
@@ -106,10 +107,8 @@ def fetch_cricket_data(
         view_text = ";view=innings"
         max_pages = 3000
     else:
-        view_text = "" 
+        view_text = ""
         max_pages = 100
-    
-    if view == "innings" else ""
 
     # URL signifier for match type
     matchclass = ["test", "odi", "t20"].index(matchtype) + 1 + 7 * (sex == "women")
@@ -187,3 +186,6 @@ def fetch_cricket_data(
     scraped = pd.concat(table_store).reset_index(drop=True)
 
     return scraped
+
+
+# %%
