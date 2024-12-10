@@ -140,6 +140,7 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
             all_matches = all_matches[
                 ~all_matches.key.isin(["player", "players", "registry"])
             ]
+
             # Process team number
             all_matches["team"] = all_matches.key == "team"
             all_matches["team"] = all_matches.groupby("match_id").team.cumsum()
@@ -148,10 +149,42 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
                 all_matches["key"] + all_matches.team.astype(str),
                 all_matches["key"],
             )
-
+            # Process umpire number
+            all_matches["umpire"] = all_matches.key == "umpire"
+            all_matches["umpire"] = all_matches.groupby("match_id").umpire.cumsum()
+            all_matches["key"] = np.where(
+                all_matches["key"] == "umpire",
+                all_matches["key"] + all_matches.umpire.astype(str),
+                all_matches["key"],
+            )
+            # Keep 2 umpires
+            all_matches = all_matches.query("key != 'umpire3'")
+            # Deduplicate dates and keep first
+            # Residual duplication include match date, TV and reserve umpires, and player of match
+            all_matches = all_matches.drop_duplicates(["match_id", "key"], keep="first")
+            # Finally create pivot table
             all_matches = all_matches.pivot(
                 index="match_id", columns="key", values="value"
-            )
+            ).reset_index()
+            # Reorder columns
+            cols_order = [
+                "match_id",
+                "team1",
+                "team2",
+                "gender",
+                "season",
+                "date",
+                "event",
+                "match_number",
+                "venue",
+                "city",
+                "balls_per_over",
+                "toss_winner",
+                "toss_decision",
+                "player_of_match",
+            ]
+            cols_order += [col for col in all_matches.columns if col not in cols_order]
+            all_matches = all_matches[cols_order]
         else:
             # Process player data
             all_matches = all_matches[all_matches.key.isin(["player", "players"])]
@@ -167,3 +200,6 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
             )  # Implement cleaning logic separately
 
     return all_matches
+
+
+# %%
