@@ -114,20 +114,27 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
 
     # Load and process files
     match_filepaths = [os.path.join(output_dir, f) for f in match_files]
+
+    # Read data from CSVs stored in temp directory
     if type == "bbb":
-        dataframes = [pd.read_csv(f) for f in match_filepaths]
+        dataframes = [pd.read_csv(f).assign(match_id=f) for f in match_filepaths]
         all_matches = pd.concat(dataframes, ignore_index=True)
+        all_matches["match_id"] = all_matches["match_id"].str.extract(
+            r"(\d+)", expand=False
+        )
     else:
+        # Need to manually assign colnames to allow pandas to read in data
+        colnames = ["info", "key", "value", "player", "hash"]
         all_matches = pd.concat(
             [
-                pd.read_csv(f, names=["col_to_delete", "key", "value"], skiprows=1)
+                pd.read_csv(f, names=colnames, skiprows=1).assign(match_id=f)
                 for f in match_filepaths
             ],
             ignore_index=True,
         )
-        all_matches["match_id"] = all_matches["path"].str.extract(
-            r"([a-zA-Z0-9_\-\.]*_info.csv)"
-        )[0]
+        all_matches["match_id"] = all_matches["match_id"].str.extract(
+            r"(\d+)", expand=False
+        )
         if type == "match":
             # Process metadata
             all_matches = all_matches[
@@ -139,6 +146,8 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
         else:
             # Process player data
             all_matches = all_matches[all_matches["key"].isin(["player", "players"])]
+            all_matches = all_matches[["match_id", "value", "player"]]
+            all_matches = all_matches.rename(columns={"value": "team"})
 
     # Clean data
     if type == "bbb" and "ball" in all_matches.columns:
