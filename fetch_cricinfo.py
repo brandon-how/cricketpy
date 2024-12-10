@@ -167,8 +167,8 @@ def fetch_cricinfo(
         except ValueError:
             raise RuntimeError("Failed to parse HTML")
 
-        # Make everything string for now
-        data = data.astype(str)
+        # # Make everything string for now
+        # data = data.astype(str)
 
         # Check if extract data is empty and break if so
         if data.shape == (1, 1):

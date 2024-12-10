@@ -28,13 +28,6 @@ url = "https://cricsheet.org/downloads/"
 subdir = dest_file.replace("_csv2.zip", "") + "_bbb"
 
 # %%
-import os
-import re
-import tempfile
-import requests
-import zipfile
-import pandas as pd
-from pathlib import Path
 
 
 def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
@@ -199,7 +192,7 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
     #             all_matches
     #         )  # Implement cleaning logic separately
 
-    return all_matches.astype(str)
+    return all_matches
 
 
 # %%
