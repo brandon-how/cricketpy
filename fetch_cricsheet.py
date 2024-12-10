@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import os
 import tempfile
+import zipfile
 from pathlib import Path
 from dotenv import load_dotenv
 from countries import *
@@ -20,7 +21,7 @@ env = os.getenv("env")
 
 type = "bbb"
 gender = "male"
-competition = "test"
+competition = "tests"
 
 dest_file = f"{competition}_{gender}_csv2.zip"
 url = "https://cricsheet.org/downloads/"
@@ -86,19 +87,22 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
 
     # Categorize files
     file_types = {
-        "txt": [f for f in file_list if f.endswith(".txt")],
+        "txt": [f for f in file_list if "txt" in f],
         "info": [f for f in file_list if "_info" in f],
         "allbbb": [f for f in file_list if "all_matches" in f],
-        "bbb": [f for f in file_list if f not in ("txt", "info", "allbbb")],
+        "bbb": [
+            f
+            for f in file_list
+            if "txt" not in f and "_info" not in f and "all_matches" not in f
+        ],
     }
 
     # Determine required files
     if type == "bbb":
-        match_files = (
-            file_types["allbbb"]
-            if "all_matches.csv" in file_types["allbbb"]
-            else file_types["bbb"]
-        )
+        if "all_matches.csv" in file_types["allbbb"]:
+            match_files = "all_matches.csv"
+        else:
+            match_files = file_types["bbb"]
     else:
         match_files = file_types["info"]
 
