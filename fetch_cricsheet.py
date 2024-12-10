@@ -138,14 +138,23 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
         if type == "match":
             # Process metadata
             all_matches = all_matches[
-                ~all_matches["key"].isin(["player", "players", "registry"])
+                ~all_matches.key.isin(["player", "players", "registry"])
             ]
+            # Process team number
+            all_matches["team"] = all_matches.key == "team"
+            all_matches["team"] = all_matches.groupby("match_id").team.cumsum()
+            all_matches["key"] = np.where(
+                all_matches["key"] == "team",
+                all_matches["key"] + all_matches.team.astype(str),
+                all_matches["key"],
+            )
+
             all_matches = all_matches.pivot(
                 index="match_id", columns="key", values="value"
             )
         else:
             # Process player data
-            all_matches = all_matches[all_matches["key"].isin(["player", "players"])]
+            all_matches = all_matches[all_matches.key.isin(["player", "players"])]
             all_matches = all_matches[["match_id", "value", "player"]]
             all_matches = all_matches.rename(columns={"value": "team"})
 
