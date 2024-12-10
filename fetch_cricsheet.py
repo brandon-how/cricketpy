@@ -191,15 +191,18 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
             all_matches = all_matches[["match_id", "value", "player"]]
             all_matches = all_matches.rename(columns={"value": "team"})
 
-    # Clean data
-    if type == "bbb" and "ball" in all_matches.columns:
-        t20 = all_matches["ball"].max() <= 21
-        if t20:
-            all_matches = cleaning_bbb_t20_cricsheet(
-                all_matches
-            )  # Implement cleaning logic separately
+    # # Clean data
+    # if type == "bbb" and "ball" in all_matches.columns:
+    #     t20 = all_matches["ball"].max() <= 21
+    #     if t20:
+    #         all_matches = cleaning_bbb_t20_cricsheet(
+    #             all_matches
+    #         )  # Implement cleaning logic separately
 
-    return all_matches
+    return all_matches.astype(str)
 
 
 # %%
+
+test = fetch_cricsheet(type="bbb", gender="male", competition="tests")
+t20 = fetch_cricsheet(type="bbb", gender="male", competition="t20s")
