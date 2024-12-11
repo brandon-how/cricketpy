@@ -12,6 +12,8 @@ from difflib import get_close_matches
 from io import StringIO
 from typing import Tuple, Literal, Optional
 
+pd.set_option("display.max_columns", 100)
+
 # Set environment
 env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
@@ -113,8 +115,9 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
         dataframes = [pd.read_csv(f).assign(match_id=f) for f in match_filepaths]
         all_matches = pd.concat(dataframes, ignore_index=True)
         all_matches["match_id"] = all_matches["match_id"].str.extract(
-            r"(\d+)", expand=False
+            r"([a-zA-Z0-9_\-\.]*$)"
         )
+        all_matches["match_id"] = all_matches["match_id"].str.replace(".csv", "")
     else:
         # Need to manually assign colnames to allow pandas to read in data
         colnames = ["info", "key", "value", "player", "hash"]
@@ -126,8 +129,9 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
             ignore_index=True,
         )
         all_matches["match_id"] = all_matches["match_id"].str.extract(
-            r"(\d+)", expand=False
+            r"([a-zA-Z0-9_\-\.]*$)"
         )
+        all_matches["match_id"] = all_matches["match_id"].str.replace("_info.csv", "")
         if type == "match":
             # Process metadata
             all_matches = all_matches[
@@ -139,7 +143,7 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
             all_matches["team"] = all_matches.groupby("match_id").team.cumsum()
             all_matches["key"] = np.where(
                 all_matches["key"] == "team",
-                all_matches["key"] + all_matches.team.astype(str),
+                all_matches["key"] + all_matches["team"].astype(str),
                 all_matches["key"],
             )
             # Process umpire number
@@ -147,7 +151,7 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
             all_matches["umpire"] = all_matches.groupby("match_id").umpire.cumsum()
             all_matches["key"] = np.where(
                 all_matches["key"] == "umpire",
-                all_matches["key"] + all_matches.umpire.astype(str),
+                all_matches["key"] + all_matches["umpire"].astype(str),
                 all_matches["key"],
             )
             # Keep 2 umpires
@@ -197,7 +201,7 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
 
 # %%
 
-test = fetch_cricsheet(type="bbb", gender="male", competition="tests")
+# test = fetch_cricsheet(type="bbb", gender="male", competition="tests")
 t20 = fetch_cricsheet(type="bbb", gender="male", competition="t20s")
 
 # %%
@@ -205,7 +209,7 @@ t20 = fetch_cricsheet(type="bbb", gender="male", competition="t20s")
 
 def cleaning_bbb_t20_cricsheet(df):
     # Step 1: Add columns for wicket, over number, and extra_ball
-    df["wicket"] = ~df["wicket_type"].isin(["", "retired hurt"])
+    df["wicket"] = ~df["wicket_type"].isin(["retired hurt"]) & df["wicket_type"].notna()
     df["over"] = np.ceil(df["ball"]).astype(int)
     df["extra_ball"] = df["wides"].notna() | df["noballs"].notna()
 
@@ -225,9 +229,11 @@ def cleaning_bbb_t20_cricsheet(df):
                     "ball": group["ball"],
                     "over": group["over"],
                 }
-            )
+            ),
+            include_groups=False,
         )
-        .reset_index(drop=True)
+        .reset_index()
+        .drop(columns="level_2")
     )
     df = df.merge(cumulative, on=["match_id", "innings", "over", "ball"], how="inner")
 
