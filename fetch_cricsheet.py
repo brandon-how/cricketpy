@@ -236,27 +236,16 @@ innings_total = (
     + df.groupby(["match_id", "innings"])["extras"].sum()
 ).reset_index(name="total_score")
 
-
 innings_total = (
     innings_total.pivot(index="match_id", columns="innings", values="total_score")
     .rename(columns={1: "innings1_total", 2: "innings2_total"})
     .filter(["innings1_total", "innings2_total"])
     .reset_index()
-    .astype("Int64")  # Nullable int type
 )
-
-
-# %%
-
-innings_total = innings_total.pivot(
-    index="match_id", columns="innings", values="total_score"
-).reset_index()
-innings_total.columns = ["match_id", "innings1_total", "innings2_total"]
 
 # Step 6: Merge all data
 df = df.merge(innings_total, on="match_id", how="inner")
 df["target"] = df["innings1_total"] + 1
-df["start_date"] = pd.to_datetime(df["start_date"]).dt.date
 
 # Step 7: Reorder columns
 column_order = [
@@ -294,6 +283,12 @@ column_order = [
     "other_player_dismissed",
 ]
 df = df[column_order + [col for col in df.columns if col not in column_order]]
+
+
+# %%
+
+
+df["start_date"] = pd.to_datetime(df["start_date"]).dt.date
 
 
 # %%
