@@ -203,6 +203,98 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
 
 # test = fetch_cricsheet(type="bbb", gender="male", competition="tests")
 t20 = fetch_cricsheet(type="bbb", gender="male", competition="t20s")
+df = t20.copy()
+
+# %%
+df["wicket"] = ~df["wicket_type"].isin(["retired hurt"]) & df["wicket_type"].notna()
+df["over"] = np.ceil(df["ball"]).astype(int)
+df["extra_ball"] = df["wides"].notna() | df["noballs"].notna()
+
+# Step 2: Adjust ball values within each over
+df["ball"] = df.groupby(["match_id", "innings", "over"]).cumcount() + 1
+
+# Step 3: Calculate cumulative runs and wickets
+df["runs_scored_yet"] = (
+    df.groupby(["match_id", "innings"])["runs_off_bat"].cumsum()
+    + df.groupby(["match_id", "innings"])["extras"].cumsum()
+)
+
+df["wickets_lost_yet"] = df.groupby(["match_id", "innings"])["wicket"].cumsum()
+
+# Step 4: Calculate balls in over and balls remaining
+df["extra_ball"] = df.groupby(["match_id", "innings", "over"])["extra_ball"].cumsum()
+df["ball_in_over"] = df["ball"] - df["extra_ball"]
+df["balls_remaining"] = np.where(
+    df["innings"].isin([1, 2]),
+    120 - ((df["over"] - 1) * 6 + df["ball_in_over"]),
+    6 - df["ball_in_over"],
+)  # For tie breaker, each team plays 1 over (6 balls, innings 3 & 4)
+
+# Step 5: Calculate innings totals
+innings_total = (
+    df.groupby(["match_id", "innings"])["runs_off_bat"].sum()
+    + df.groupby(["match_id", "innings"])["extras"].sum()
+).reset_index(name="total_score")
+
+
+innings_total = (
+    innings_total.pivot(index="match_id", columns="innings", values="total_score")
+    .rename(columns={1: "innings1_total", 2: "innings2_total"})
+    .filter(["innings1_total", "innings2_total"])
+    .reset_index()
+    .astype("Int64")  # Nullable int type
+)
+
+
+# %%
+
+innings_total = innings_total.pivot(
+    index="match_id", columns="innings", values="total_score"
+).reset_index()
+innings_total.columns = ["match_id", "innings1_total", "innings2_total"]
+
+# Step 6: Merge all data
+df = df.merge(innings_total, on="match_id", how="inner")
+df["target"] = df["innings1_total"] + 1
+df["start_date"] = pd.to_datetime(df["start_date"]).dt.date
+
+# Step 7: Reorder columns
+column_order = [
+    "match_id",
+    "season",
+    "start_date",
+    "venue",
+    "innings",
+    "over",
+    "ball",
+    "batting_team",
+    "bowling_team",
+    "striker",
+    "non_striker",
+    "bowler",
+    "runs_off_bat",
+    "extras",
+    "ball_in_over",
+    "extra_ball",
+    "balls_remaining",
+    "runs_scored_yet",
+    "wicket",
+    "wickets_lost_yet",
+    "innings1_total",
+    "innings2_total",
+    "target",
+    "wides",
+    "noballs",
+    "byes",
+    "legbyes",
+    "penalty",
+    "wicket_type",
+    "player_dismissed",
+    "other_wicket_type",
+    "other_player_dismissed",
+]
+df = df[column_order + [col for col in df.columns if col not in column_order]]
+
 
 # %%
 
@@ -217,6 +309,8 @@ def cleaning_bbb_t20_cricsheet(df):
     df["ball"] = df.groupby(["match_id", "innings", "over"]).cumcount() + 1
 
     # Step 3: Calculate cumulative runs and wickets
+    cumulative
+
     cumulative = (
         df.groupby(["match_id", "innings"])
         .apply(
@@ -246,14 +340,6 @@ def cleaning_bbb_t20_cricsheet(df):
                     "ball": group["ball"],
                     "extra_ball": group["extra_ball"].cumsum(),
                     "ball_in_over": group["ball"] - group["extra_ball"].cumsum(),
-                    "balls_remaining": group.apply(
-                        lambda row: (
-                            120 - ((row["over"] - 1) * 6 + row["ball_in_over"])
-                            if row["innings"] in [1, 2]
-                            else 6 - row["ball_in_over"]
-                        ),
-                        axis=1,
-                    ),
                 }
             )
         )
