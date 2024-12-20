@@ -203,9 +203,9 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
 
 # test = fetch_cricsheet(type="bbb", gender="male", competition="tests")
 t20 = fetch_cricsheet(type="bbb", gender="male", competition="t20s")
-df = t20.copy()
 
-# %%
+#%%
+df = t20.copy()
 df["wicket"] = ~df["wicket_type"].isin(["retired hurt"]) & df["wicket_type"].notna()
 df["over"] = np.ceil(df["ball"]).astype(int)
 df["extra_ball"] = df["wides"].notna() | df["noballs"].notna()
@@ -287,119 +287,20 @@ df = df[column_order + [col for col in df.columns if col not in column_order]]
 
 # %%
 
-
-df["start_date"] = pd.to_datetime(df["start_date"]).dt.date
-
-
+def string_to_float(df: pd.DataFrame, col: str):
+    try:
+        new_col = df[col].astype(float)
+        return new_col
+    except ValueError:
+        return df[col]
+    
+def float_to_int(df: pd.DataFrame):
+    float_cols = df.select_dtypes(include=["float"]).columns
+    for col in float_cols:
+        if df[col].apply(float.is_integer).all():
+            df[col] = df[col].astype(int)
+    return df
 # %%
 
 
 def cleaning_bbb_t20_cricsheet(df):
-    # Step 1: Add columns for wicket, over number, and extra_ball
-    df["wicket"] = ~df["wicket_type"].isin(["retired hurt"]) & df["wicket_type"].notna()
-    df["over"] = np.ceil(df["ball"]).astype(int)
-    df["extra_ball"] = df["wides"].notna() | df["noballs"].notna()
-
-    # Step 2: Adjust ball values within each over
-    df["ball"] = df.groupby(["match_id", "innings", "over"]).cumcount() + 1
-
-    # Step 3: Calculate cumulative runs and wickets
-    cumulative
-
-    cumulative = (
-        df.groupby(["match_id", "innings"])
-        .apply(
-            lambda group: pd.DataFrame(
-                {
-                    "runs_scored_yet": (
-                        group["runs_off_bat"] + group["extras"]
-                    ).cumsum(),
-                    "wickets_lost_yet": group["wicket"].cumsum(),
-                    "ball": group["ball"],
-                    "over": group["over"],
-                }
-            ),
-            include_groups=False,
-        )
-        .reset_index()
-        .drop(columns="level_2")
-    )
-    df = df.merge(cumulative, on=["match_id", "innings", "over", "ball"], how="inner")
-
-    # Step 4: Calculate balls in over and balls remaining
-    remaining_balls = (
-        df.groupby(["match_id", "innings", "over"])
-        .apply(
-            lambda group: pd.DataFrame(
-                {
-                    "ball": group["ball"],
-                    "extra_ball": group["extra_ball"].cumsum(),
-                    "ball_in_over": group["ball"] - group["extra_ball"].cumsum(),
-                }
-            )
-        )
-        .reset_index(drop=True)
-        .drop(columns=["extra_ball"])
-    )
-    df = df.merge(
-        remaining_balls, on=["match_id", "innings", "over", "ball"], how="inner"
-    )
-
-    # Step 5: Calculate innings totals
-    innings_total = (
-        df.groupby(["match_id", "innings"])
-        .apply(
-            lambda group: pd.Series(
-                {"total_score": group["runs_off_bat"].sum() + group["extras"].sum()}
-            )
-        )
-        .reset_index()
-    )
-    innings_total = innings_total.pivot(
-        index="match_id", columns="innings", values="total_score"
-    ).reset_index()
-    innings_total.columns = ["match_id", "innings1_total", "innings2_total"]
-
-    # Step 6: Merge all data
-    df = df.merge(innings_total, on="match_id", how="inner")
-    df["target"] = df["innings1_total"] + 1
-    df["start_date"] = pd.to_datetime(df["start_date"]).dt.date
-
-    # Step 7: Reorder columns
-    column_order = [
-        "match_id",
-        "season",
-        "start_date",
-        "venue",
-        "innings",
-        "over",
-        "ball",
-        "batting_team",
-        "bowling_team",
-        "striker",
-        "non_striker",
-        "bowler",
-        "runs_off_bat",
-        "extras",
-        "ball_in_over",
-        "extra_ball",
-        "balls_remaining",
-        "runs_scored_yet",
-        "wicket",
-        "wickets_lost_yet",
-        "innings1_total",
-        "innings2_total",
-        "target",
-        "wides",
-        "noballs",
-        "byes",
-        "legbyes",
-        "penalty",
-        "wicket_type",
-        "player_dismissed",
-        "other_wicket_type",
-        "other_player_dismissed",
-    ]
-    df = df[column_order + [col for col in df.columns if col not in column_order]]
-
-    return df
