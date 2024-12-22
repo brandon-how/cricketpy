@@ -96,6 +96,30 @@ def process_match_metadata(all_matches: pd.DataFrame) -> pd.DataFrame:
     return all_matches
 
 
+def process_metadata(match_filepaths: List[str]) -> pd.DataFrame:
+    # Need to manually assign colnames to allow pandas to read in data
+    colnames = ["info", "key", "value", "player", "hash"]
+    all_matches = pd.concat(
+        [
+            pd.read_csv(f, names=colnames, skiprows=1).assign(match_id=f)
+            for f in match_filepaths
+        ],
+        ignore_index=True,
+    )
+    all_matches["match_id"] = all_matches["match_id"].str.extract(
+        r"([a-zA-Z0-9_\-\.]*$)"
+    )
+    all_matches["match_id"] = all_matches["match_id"].str.replace("_info.csv", "")
+
+    if type == "match":
+        all_matches = process_match_metadata(all_matches)
+    else:
+        # Process player data
+        all_matches = all_matches[all_matches.key.isin(["player", "players"])]
+        all_matches = all_matches[["match_id", "value", "player"]]
+        all_matches = all_matches.rename(columns={"value": "team"})
+
+
 # %%
 
 
@@ -184,26 +208,7 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
     if type == "bbb":
         all_matches = process_bbb_data(match_filepaths)
     else:
-        # Need to manually assign colnames to allow pandas to read in data
-        colnames = ["info", "key", "value", "player", "hash"]
-        all_matches = pd.concat(
-            [
-                pd.read_csv(f, names=colnames, skiprows=1).assign(match_id=f)
-                for f in match_filepaths
-            ],
-            ignore_index=True,
-        )
-        all_matches["match_id"] = all_matches["match_id"].str.extract(
-            r"([a-zA-Z0-9_\-\.]*$)"
-        )
-        all_matches["match_id"] = all_matches["match_id"].str.replace("_info.csv", "")
-        if type == "match":
-            all_matches = process_match_metadata(all_matches)
-        else:
-            # Process player data
-            all_matches = all_matches[all_matches.key.isin(["player", "players"])]
-            all_matches = all_matches[["match_id", "value", "player"]]
-            all_matches = all_matches.rename(columns={"value": "team"})
+        all_matches = process_metadata(match_filepaths)
 
     # # Clean data
     # if type == "bbb" and "ball" in all_matches.columns:
