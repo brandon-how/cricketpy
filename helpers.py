@@ -82,3 +82,31 @@ def date_to_date(df: pd.DataFrame) -> pd.DataFrame:
     for col in df.filter(like="date").columns:
         df[col] = pd.to_datetime(df[col])
     return df
+
+
+def dtype_clean(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Cleans and optimizes the data types in a DataFrame.
+
+    This function performs a series of type conversions on the input DataFrame:
+    1. Converts string or object-type columns to float where possible.
+    2. Converts float columns to integer if all values in the column are whole numbers.
+    3. Converts columns with 'date' in their names to datetime format.
+
+    Parameters:
+    ----------
+    df : pd.DataFrame
+        The DataFrame to be cleaned and optimized.
+
+    Returns:
+    -------
+    pd.DataFrame
+        The DataFrame with cleaned and optimized data types.
+    """
+    # String to float
+    df = string_to_float(df)
+    # Float to int
+    df = float_to_int(df)
+    # Date to date
+    df = date_to_date(df)
+    return df
