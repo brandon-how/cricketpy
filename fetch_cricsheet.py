@@ -321,8 +321,14 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
 
     # Download the file if not already downloaded
     if not os.path.exists(destfile_path):
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+        except:
+            response = requests.get(
+                f"https://cricsheet.org/downloads/{competition}s_{gender}_csv2.zip",
+                headers=headers,
+            )
         with open(destfile_path, "wb") as f:
             f.write(response.content)
 
@@ -374,14 +380,3 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
     all_matches = dtype_clean(all_matches)
 
     return all_matches
-
-
-# %%
-
-# test = fetch_cricsheet(type="bbb", gender="male", competition="tests")
-t20 = fetch_cricsheet(type="bbb", gender="male", competition="t20s")
-
-# %%
-df = t20.copy()
-
-# %%
