@@ -6,11 +6,8 @@ import os
 import tempfile
 import zipfile
 from pathlib import Path
-from dotenv import load_dotenv
 from countries import *
-from difflib import get_close_matches
-from io import StringIO
-from typing import Tuple, Literal, Optional, List
+from typing import List
 from helpers import *
 
 pd.set_option("display.max_columns", 100)
@@ -18,6 +15,19 @@ pd.set_option("display.max_columns", 100)
 
 # %%
 def process_bbb_data(match_filepaths: List[str]) -> pd.DataFrame:
+    """Processes ball-by-ball data from given CSV file paths.
+
+    This function reads a list of CSV file paths containing ball-by-ball data,
+    concatenates them into a single DataFrame, and processes the match IDs
+    by extracting relevant parts and removing file extensions.
+
+    Args:
+        match_filepaths (List[str]): A list of file paths pointing to CSV files
+            with ball-by-ball data.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing the combined and processed ball-by-ball data.
+    """
     dataframes = [pd.read_csv(f).assign(match_id=f) for f in match_filepaths]
     all_matches = pd.concat(dataframes, ignore_index=True)
     all_matches["match_id"] = all_matches["match_id"].str.extract(
@@ -29,11 +39,24 @@ def process_bbb_data(match_filepaths: List[str]) -> pd.DataFrame:
 
 # %%
 def process_match_metadata(all_matches: pd.DataFrame) -> pd.DataFrame:
+    """Processes match metadata to create a structured DataFrame.
+
+    This function processes metadata for cricket matches by handling team
+    and umpire details, deduplicating key data points, and pivoting the data
+    into a wide-format DataFrame.
+
+    Args:
+        all_matches (pd.DataFrame): A DataFrame containing match metadata,
+            including columns of `key`, `value`, and `match_id`.
+
+    Returns:
+        pd.DataFrame: A wide-format DataFrame with organized metadata for each match.
+    """
     # Process metadata
     all_matches = all_matches[~all_matches.key.isin(["player", "players", "registry"])]
 
     # Process team number
-    all_matches["team"] = all_matches.key == "team"
+    all_matches["team"] = all_matches["key"] == "team"
     all_matches["team"] = all_matches.groupby("match_id")["team"].cumsum()
     all_matches["key"] = np.where(
         all_matches["key"] == "team",
@@ -41,7 +64,7 @@ def process_match_metadata(all_matches: pd.DataFrame) -> pd.DataFrame:
         all_matches["key"],
     )
     # Process umpire number
-    all_matches["umpire"] = all_matches.key == "umpire"
+    all_matches["umpire"] = all_matches["key"] == "umpire"
     all_matches["umpire"] = all_matches.groupby("match_id")["umpire"].cumsum()
     all_matches["key"] = np.where(
         all_matches["key"] == "umpire",
@@ -84,6 +107,18 @@ def process_match_metadata(all_matches: pd.DataFrame) -> pd.DataFrame:
 
 # %%
 def process_metadata(match_filepaths: List[str]) -> pd.DataFrame:
+    """Processes metadata or player data from given file paths.
+
+    This function reads a list of CSV file paths containing match or player metadata,
+    processes the data based on the specified type, and returns a structured DataFrame.
+
+    Args:
+        match_filepaths (List[str]): A list of file paths pointing to CSV files
+            with metadata or player data.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing processed metadata or player data.
+    """
     # Need to manually assign colnames to allow pandas to read in data
     colnames = ["info", "key", "value", "player", "hash"]
     all_matches = pd.concat(
@@ -110,6 +145,23 @@ def process_metadata(match_filepaths: List[str]) -> pd.DataFrame:
 
 # %%
 def cleaning_bbb_t20_cricsheet(df: pd.DataFrame) -> pd.DataFrame:
+    """Cleans and processes ball-by-ball T20 cricket data from Cricsheet.
+
+    This function performs data cleaning and transformation for T20 cricket
+    ball-by-ball data. It adjusts ball counts for extras, calculates cumulative
+    runs and wickets, handles innings totals, and prepares the dataset with
+    derived columns for analysis.
+
+    Args:
+        df (pd.DataFrame): A DataFrame containing raw ball-by-ball cricket data
+            with columns including `match_id`, `innings`, `ball`, `wicket_type`,
+            `runs_off_bat`, and `extras`.
+
+    Returns:
+        pd.DataFrame: A cleaned and processed DataFrame with additional columns
+            for cumulative metrics, adjusted ball counts, innings totals, and
+            target scores, reordered for ease of use.
+    """
     df["wicket"] = ~df["wicket_type"].isin(["retired hurt"]) & df["wicket_type"].notna()
 
     df["over"] = np.ceil(df["ball"]).astype(int)
@@ -195,6 +247,39 @@ def cleaning_bbb_t20_cricsheet(df: pd.DataFrame) -> pd.DataFrame:
 
 # %%
 def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
+    """
+    Fetches and processes cricket match data from Cricsheet based on the provided parameters.
+
+    This function downloads a zipped CSV file from the Cricsheet website, extracts it, processes the data, and returns
+    a cleaned pandas DataFrame with the relevant match information.
+
+    Args:
+        type (str): The type of data to fetch. One of "bbb" (default), "match", or "player".
+        gender (str): The gender category of the data. Must be one of "male" or "female".
+        competition (str): The competition for which to fetch the data. This can be one of a number of cricket competitions
+                           such as "tests", "county", "the_hundred", etc. See `competition_map` for full list.
+
+    Returns:
+        pandas.DataFrame: A DataFrame containing the processed cricket match data.
+
+    Raises:
+        ValueError: If an invalid value is provided for `type` or `gender`.
+        requests.exceptions.RequestException: If there is an issue with the HTTP request during download.
+        zipfile.BadZipFile: If the downloaded file is not a valid zip file.
+        KeyError: If the expected CSV file is not found within the zip archive.
+
+    Examples:
+        >>> df = fetch_cricsheet(type="bbb", gender="male", competition="tests")
+        >>> print(df.head())
+        ...
+
+    Notes:
+        - The function handles backwards compatibility for the `competition` parameter using a `competition_map`.
+        - If the `type` is "bbb" and the competition contains ball-by-ball data, the function will clean the data specifically for T20 matches.
+        - The function utilizes temporary directories for downloading and extracting files.
+        - The cleaned data is returned as a pandas DataFrame after processing and cleaning.
+
+    """
     # Match arguments (similar to match.arg in R)
     valid_types = ["bbb", "match", "player"]
     valid_genders = ["female", "male"]
