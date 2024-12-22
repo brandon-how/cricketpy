@@ -284,23 +284,7 @@ column_order = [
 ]
 df = df[column_order + [col for col in df.columns if col not in column_order]]
 
-
-# %%
-
-def string_to_float(df: pd.DataFrame, col: str):
-    try:
-        new_col = df[col].astype(float)
-        return new_col
-    except ValueError:
-        return df[col]
-    
-def float_to_int(df: pd.DataFrame):
-    float_cols = df.select_dtypes(include=["float"]).columns
-    for col in float_cols:
-        if df[col].apply(float.is_integer).all():
-            df[col] = df[col].astype(int)
-    return df
-# %%
+#%%
 
 
 def cleaning_bbb_t20_cricsheet(df):
