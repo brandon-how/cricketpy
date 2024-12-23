@@ -329,6 +329,7 @@ def fetch_cricsheet(type="bbb", gender="male", competition="tests"):
                 f"https://cricsheet.org/downloads/{competition}s_{gender}_csv2.zip",
                 headers=headers,
             )
+        response.raise_for_status()
         with open(destfile_path, "wb") as f:
             f.write(response.content)
 
