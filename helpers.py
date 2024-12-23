@@ -39,10 +39,16 @@ def string_to_float(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         The DataFrame with applicable columns converted to float.
     """
-    for col in df.select_dtypes(include=["string", "object"]).columns:
-        df[col] = df[col].str.strip().replace("", np.nan)
-        df[col] = col_string_to_float(df, col)
-    return df
+    output = df.copy()
+    # Initial go
+    for col in output.columns:
+        output[col] = col_string_to_float(output, col)
+
+    # Second loop
+    for col in output.select_dtypes(include=["string", "object"]).columns:
+        output[col] = output[col].str.strip().replace("", np.nan)
+        output[col] = col_string_to_float(output, col)
+    return output
 
 
 def float_to_int(df: pd.DataFrame) -> pd.DataFrame:
@@ -59,10 +65,11 @@ def float_to_int(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         The DataFrame with applicable float columns converted to int.
     """
-    for col in df.select_dtypes(include=["float"]).columns:
-        if df[col].apply(float.is_integer).all():
-            df[col] = df[col].astype(int)
-    return df
+    output = df.copy()
+    for col in output.select_dtypes(include=["float"]).columns:
+        if output[col].apply(float.is_integer).all():
+            output[col] = output[col].astype(int)
+    return output
 
 
 def date_to_date(df: pd.DataFrame) -> pd.DataFrame:
@@ -79,9 +86,10 @@ def date_to_date(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         The DataFrame with applicable columns converted to datetime.
     """
-    for col in df.filter(like="date").columns:
-        df[col] = pd.to_datetime(df[col])
-    return df
+    output = df.copy()
+    for col in output.filter(like="date").columns:
+        output[col] = pd.to_datetime(output[col])
+    return output
 
 
 def dtype_clean(df: pd.DataFrame) -> pd.DataFrame:
@@ -104,9 +112,10 @@ def dtype_clean(df: pd.DataFrame) -> pd.DataFrame:
         The DataFrame with cleaned and optimized data types.
     """
     # String to float
-    df = string_to_float(df)
+    output = df.copy()
+    output = string_to_float(df)
     # Float to int
-    df = float_to_int(df)
+    output = float_to_int(output)
     # Date to date
-    df = date_to_date(df)
-    return df
+    output = date_to_date(output)
+    return output
