@@ -6,8 +6,115 @@ from countries import *
 from difflib import get_close_matches
 from io import StringIO
 from typing import Literal, Optional
+from helpers import *
+
+
 
 # %%
+test = fetch_cricinfo(
+        matchtype="test",
+        sex="women",
+        activity="batting",
+        view="innings"
+         )
+# %%
+df = test
+
+# %%
+
+def clean_batting_data(df: pd.DataFrame) -> pd.DataFrame:
+    # Cast to string then replace
+    df = df.replace("-", np.nan)
+    # Rename columns 
+    df.columns = df.columns.str.lower()
+    df = df.rename(
+        columns={
+        "Mat": "matches",
+        "Inns": "innings",
+            "NO": "not_outs",
+            "HS": "highscore",
+            "Ave": "average",
+            "100": "hundreds",
+            "50": "fifties",
+            "0": "ducks",
+            "SR": "strike_rate",
+            "BF": "balls_faced",
+            "4s": "fours",
+            "6s": "sixes",
+            "Mins": "minutes",
+            "Start Date": "date"
+        }
+    )
+
+    if "matches" in df.columns:
+        # Add columns
+        df["highscore_notout"] = df["highscore"].str.contains("\\*")
+        if "span" in df.columns:
+            df["start"] = df['span'].str.split('-').str[0]
+            df["end"] = df['span'].str.split('-').str[1]
+        # Clean column
+        df["highscore"] = df["highscore"].str.replace("*", "")
+        # Transform dtypes
+        df = dtype_clean(df)
+        # Batting average
+        df["average"] = df["runs"] / (df["innings"] - df["not_outs"])
+    else:
+
+
+
+
+clean_batting_data <- function(x) {
+
+  } else {
+    x$Innings <- as.integer(x$Innings)
+    x$Minutes <- as.numeric(x$Minutes)
+    x$Date <- lubridate::dmy(x$Date)
+    x$Opposition <- stringr::str_replace_all(x$Opposition, "v | Women| Wmn", "")
+    x$Opposition <- rename_countries(x$Opposition)
+    # Add not out and participation column and remove annotations from runs
+    x$NotOut <- seq(NROW(x)) %in% grep("*", x$Runs, fixed = TRUE)
+    x$Runs <- gsub("*", "", x$Runs, fixed = TRUE)
+    x$Participation <- participation_status(x$Runs)
+    x$Runs[x$Participation != "B"] <- NA
+    x$Runs <- as.integer(x$Runs)
+  }
+
+  if ("BallsFaced" %in% vars) {
+    x$BallsFaced <- as.integer(x$BallsFaced)
+    x$StrikeRate <- x$Runs / x$BallsFaced * 100
+  }
+  if ("Fours" %in% vars) {
+    x$Fours <- as.integer(x$Fours)
+    x$Sixes <- as.integer(x$Sixes)
+  }
+
+  # Extract country information if it is present
+  # This should only be required when multiple countries are included
+  country <- (length(grep("\\(", x$Player) > 0))
+  if (country) {
+    x$Country <- stringr::str_extract(x$Player, "\\([a-zA-Z /\\-extends]+\\)")
+    x$Country <- stringr::str_replace_all(x$Country, "\\(|\\)|-W", "")
+    x$Country <- rename_countries(x$Country)
+    x$Player <- stringr::str_replace(x$Player, "\\([a-zA-Z /\\-]+\\)", "")
+  }
+
+  # Re-order and select columns
+  vars <- colnames(x)
+  if (career) {
+    varorder <- c(
+      "Player", "Country", "Start", "End", "Matches", "Innings", "NotOuts", "Runs", "HighScore", "HighScoreNotOut",
+      "Average", "BallsFaced", "StrikeRate", "Hundreds", "Fifties", "Ducks", "Fours", "Sixes"
+    )
+  } else {
+    varorder <- c(
+      "Date", "Player", "Country", "Runs", "NotOut", "Minutes", "BallsFaced", "Fours", "Sixes",
+      "StrikeRate", "Innings", "Participation", "Opposition", "Ground"
+    )
+  }
+  varorder <- varorder[varorder %in% vars]
+
+  return(x[, varorder])
+}
 
 
 # %%

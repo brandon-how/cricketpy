@@ -42,7 +42,7 @@ def string_to_float(df: pd.DataFrame) -> pd.DataFrame:
     for col in df.select_dtypes(include=["string", "object"]).columns:
         df[col] = df[col].str.strip().replace("", np.nan)
         df[col] = col_string_to_float(df, col)
-        return df
+    return df
 
 
 def float_to_int(df: pd.DataFrame) -> pd.DataFrame:
