@@ -12,6 +12,33 @@ from helpers import *
 
 
 def clean_batting_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Cleans and processes batting data in a pandas DataFrame for ESPNcricinfo batting statistics.
+
+    This function performs a series of cleaning and transformation steps on a batting statistics DataFrame.
+    It standardizes column names, extracts additional data, computes new metrics, and ensures proper data types.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The input DataFrame containing raw batting data. Expected column names include abbreviations or
+        raw formats such as "Mat", "Inns", "NO", "HS", "Ave", "BF", etc.
+
+    Returns
+    -------
+    pd.DataFrame
+        A cleaned and processed batting DataFrame with standardized column names and data formats.
+
+    Notes
+    -----
+    - The function handles both "career view" and "innings view" based on the presence of the "matches" column.
+    - Columns are renamed to more descriptive names (e.g., "Mat" to "matches", "HS" to "highscore").
+    - High scores with a `*` (not-out) indicator are handled, and a new column `highscore_notout` is created.
+    - Batting averages are calculated as `runs / (innings - not_outs)` in career view.
+    - Participation status (e.g., "absent", "dnb", "tdnb", "sub") is determined from the "runs" column.
+    - Country information is extracted from the "player" column if present.
+
+    """
     # Cast to string then replace
     df = df.replace("-", np.nan)
     # Drop and/or rename columns
