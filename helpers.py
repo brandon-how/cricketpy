@@ -41,12 +41,15 @@ def string_to_float(df: pd.DataFrame) -> pd.DataFrame:
     """
     output = df.copy()
     # Initial go
-    for col in output.columns:
-        output[col] = col_string_to_float(output, col)
+    # for col in output.columns:
+    #     output[col] = col_string_to_float(output, col)
 
     # Second loop
     for col in output.select_dtypes(include=["string", "object"]).columns:
-        output[col] = output[col].str.strip().replace("", np.nan)
+        output[col] = output[col].apply(
+            lambda x: x.strip() if isinstance(x, str) else x
+        )
+        output[col] = output[col].replace("", np.nan)
         output[col] = col_string_to_float(output, col)
     return output
 
