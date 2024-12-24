@@ -342,8 +342,144 @@ def fetch_cricinfo(
 
 
 # %%
-test = fetch_cricinfo(matchtype="test", sex="women", activity="batting", view="innings")
+test = fetch_cricinfo(matchtype="test", sex="women", activity="bowling", view="innings")
+
 # %%
-clean_batting_data(test)
+# Clean bowling data
+
+
+def clean_bowling_data(df: pd.DataFrame) -> pd.DataFrame:
+
+    # Cast to string then replace
+    df = df.replace("-", np.nan)
+    # Drop and/or rename columns
+    df.columns = df.columns.str.lower()
+    if "unnamed: 8" in df.columns:
+        df = df.drop(columns="unnamed: 8")
+    df = df.rename(
+        columns={
+            "mat": "matches",
+            "inns": "innings",
+            "mdns": "maidens",
+            "wkts": "wickets",
+            "bbi": "bestbowlinginnings",
+            "bbm": "bestbowlingmatch",
+            "ave": "average",
+            "econ": "economy",
+            "sr": "strikerate",
+            "4": "fourwickets",
+            "5": "fivewickets",
+            "10": "tenwickets",
+            "start date": "date",
+        }
+    )
+
+    # Career view
+    if "matches" in df.columns:
+        # Add columns
+        df["highscore_notout"] = df["highscore"].str.contains("\\*", na=False)
+        if "span" in df.columns:
+            df["start"] = df["span"].str.split("-").str[0]
+            df["end"] = df["span"].str.split("-").str[1]
+        # Clean column
+        df["highscore"] = df["highscore"].str.replace("*", "")
+        # Transform dtypes
+        df = dtype_clean(df)
+        # Batting average
+        df["average"] = df["runs"] / (df["innings"] - df["not_outs"])
+    # Innings view
+    else:
+        # Add columns
+        df["not_out"] = df["runs"].str.contains("\\*", na=False)
+        # Clean columns
+        df["opposition"] = df["opposition"].str.replace(
+            "v | Women| Wmn", "", regex=True
+        )
+        df["opposition"] = df["opposition"].apply(rename_country)
+        df["runs"] = df["runs"].str.replace("*", "")
+        # Participation status - init to b
+        df["participation"] = "b"
+        df["participation"] = np.where(
+            df["runs"].str.contains("absent", case=False),
+            "absent",
+            np.where(
+                df["runs"].str.contains("dnb", case=False),
+                "dnb",
+                np.where(
+                    df["runs"].str.contains("tdnb", case=False),
+                    "tdnb",
+                    np.where(
+                        df["runs"].str.contains("sub", case=False),
+                        "sub",
+                        df["participation"],
+                    ),
+                ),
+            ),
+        )
+        # Clean dtypes
+        df = dtype_clean(df)
+
+    # Further cleaning
+    if "balls_faced" in df.columns:
+        df["runs_numeric"] = np.where(
+            df["runs"].str.isnumeric().astype(bool).fillna(False), df["runs"], 0
+        )
+        df["strike_rate"] = df["runs_numeric"].astype(float) / df["balls_faced"] * 100
+
+    # Extract country
+    if df["player"].str.contains(r"\(", regex=True).any():
+        df["country"] = df["player"].str.extract(r"\(([a-zA-Z /\-]+)\)")
+        df["country"] = df["country"].str.replace(r"-W", "", regex=True)
+        df["country"] = df["country"].apply(rename_country)
+        df["player"] = (
+            df["player"].str.replace(r"\([a-zA-Z /\-]+\)", "", regex=True).str.strip()
+        )
+
+    # Reorder vars
+    if "matches" in df.columns:
+        cols_order = [
+            "player",
+            "country",
+            "start",
+            "end",
+            "matches",
+            "innings",
+            "not_outs",
+            "runs",
+            "highscore",
+            "highscore_notout",
+            "average",
+            "balls_faced",
+            "strike_rate",
+            "hundreds",
+            "fifties",
+            "ducks",
+            "fours",
+            "sixes",
+        ]
+    else:
+        cols_order = [
+            "date",
+            "player",
+            "country",
+            "runs",
+            "not_out",
+            "minutes",
+            "balls_faced",
+            "fours",
+            "sixes",
+            "strike_rate",
+            "innings",
+            "participation",
+            "opposition",
+            "ground",
+        ]
+    cols_order = [col for col in cols_order if col in df.columns]
+    df = df[cols_order]
+    return df
+
+
+# %%
+test
 
 # %%
