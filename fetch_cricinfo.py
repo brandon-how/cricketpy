@@ -370,13 +370,11 @@ def fetch_cricinfo(
 
 # %%
 test = fetch_cricinfo(matchtype="test", sex="women", activity="bowling", view="innings")
-career = fetch_cricinfo(
-    matchtype="test", sex="women", activity="bowling", view="career"
-)
+career = fetch_cricinfo(matchtype="test", sex="men", activity="bowling", view="career")
 
 # %%
 
-df = test
+df = career
 # Cast to string then replace
 df = df.replace("-", np.nan)
 # Drop and/or rename columns
@@ -396,7 +394,7 @@ df = df.rename(
         "sr": "strike_rate",
         "4": "four_wickets",
         "5": "five_wickets",
-        "10": "tenwickets",
+        "10": "ten_wickets",
         "start date": "date",
     }
 )
@@ -437,18 +435,8 @@ if "economy" in df.columns:
 else:
     df["economy"] = economy
 
-# Recompute strike rate
-
-
-# %%
-
-
-# Further cleaning
-if "balls_faced" in df.columns:
-    df["runs_numeric"] = np.where(
-        df["runs"].str.isnumeric().astype(bool).fillna(False), df["runs"], 0
-    )
-    df["strike_rate"] = df["runs_numeric"].astype(float) / df["balls_faced"] * 100
+# (Re)Compute strike rate
+df["strike_rate"] = df["balls"] / df["wickets"]
 
 # Extract country
 if df["player"].str.contains(r"\(", regex=True).any():
@@ -459,6 +447,7 @@ if df["player"].str.contains(r"\(", regex=True).any():
         df["player"].str.replace(r"\([a-zA-Z /\-]+\)", "", regex=True).str.strip()
     )
 
+
 # Reorder vars
 if "matches" in df.columns:
     cols_order = [
@@ -468,30 +457,32 @@ if "matches" in df.columns:
         "end",
         "matches",
         "innings",
-        "not_outs",
+        "overs",
+        "balls",
+        "maidens",
         "runs",
-        "highscore",
-        "highscore_notout",
+        "wickets",
         "average",
-        "balls_faced",
+        "economy",
         "strike_rate",
-        "hundreds",
-        "fifties",
-        "ducks",
-        "fours",
-        "sixes",
+        "best_bowling_innings",
+        "best_bowling_match",
+        "four_wickets",
+        "five_wickets",
+        "ten_wickets",
     ]
 else:
     cols_order = [
         "date",
         "player",
         "country",
+        "overs",
+        "balls",
+        "maidens",
         "runs",
-        "not_out",
-        "minutes",
-        "balls_faced",
-        "fours",
-        "sixes",
+        "wickets",
+        "average",
+        "economy",
         "strike_rate",
         "innings",
         "participation",
@@ -500,6 +491,7 @@ else:
     ]
 cols_order = [col for col in cols_order if col in df.columns]
 df = df[cols_order]
+
 
 # %%
 # Clean bowling data
