@@ -375,122 +375,6 @@ career = fetch_cricinfo(matchtype="test", sex="men", activity="bowling", view="c
 # %%
 
 df = career
-# Cast to string then replace
-df = df.replace("-", np.nan)
-# Drop and/or rename columns
-df.columns = df.columns.str.lower()
-if "unnamed: 8" in df.columns:
-    df = df.drop(columns="unnamed: 8")
-df = df.rename(
-    columns={
-        "mat": "matches",
-        "inns": "innings",
-        "mdns": "maidens",
-        "wkts": "wickets",
-        "bbi": "best_bowling_innings",
-        "bbm": "best_bowling_match",
-        "ave": "average",
-        "econ": "economy",
-        "sr": "strike_rate",
-        "4": "four_wickets",
-        "5": "five_wickets",
-        "10": "ten_wickets",
-        "start date": "date",
-    }
-)
-
-# Innings view
-if "matches" not in df.columns:
-    df["opposition"] = df["opposition"].str.replace("v | Women| Wmn", "", regex=True)
-    df["opposition"] = df["opposition"].apply(rename_country)
-
-# Add depending on columns
-if "span" in df.columns:
-    df["start"] = df["span"].str.split("-").str[0]
-    df["end"] = df["span"].str.split("-").str[1]
-
-# Participation status - init to b
-if "overs" in df.columns:
-    df["participation"] = participation_status(df, "overs")
-    # Impute non-balling overs to 0
-    df["overs"] = np.where(df["participation"] != "b", np.nan, df["overs"])
-
-# Clean dtypes
-df = dtype_clean(df)
-
-# Calculate average and avoid rounding issues
-df["average"] = df["runs"] / df["wickets"]
-
-# Calculate (approximate) balls
-if "balls" not in df.columns:
-    df["balls"] = np.trunc(df["overs"]) * 6 + (df["overs"] % 1) * 10
-
-# Recompute economy to avoid rounding issues
-# Do not recompute if difference is too large
-threshold = 0.05
-economy = df["runs"] / (df["balls"] / 6)
-different = np.abs(round(economy, 2) - df["economy"]) > threshold
-if "economy" in df.columns:
-    df["economy"] = np.where(different, economy, df["economy"])
-else:
-    df["economy"] = economy
-
-# (Re)Compute strike rate
-df["strike_rate"] = df["balls"] / df["wickets"]
-
-# Extract country
-if df["player"].str.contains(r"\(", regex=True).any():
-    df["country"] = df["player"].str.extract(r"\(([a-zA-Z /\-]+)\)")
-    df["country"] = df["country"].str.replace(r"-W", "", regex=True)
-    df["country"] = df["country"].apply(rename_country)
-    df["player"] = (
-        df["player"].str.replace(r"\([a-zA-Z /\-]+\)", "", regex=True).str.strip()
-    )
-
-
-# Reorder vars
-if "matches" in df.columns:
-    cols_order = [
-        "player",
-        "country",
-        "start",
-        "end",
-        "matches",
-        "innings",
-        "overs",
-        "balls",
-        "maidens",
-        "runs",
-        "wickets",
-        "average",
-        "economy",
-        "strike_rate",
-        "best_bowling_innings",
-        "best_bowling_match",
-        "four_wickets",
-        "five_wickets",
-        "ten_wickets",
-    ]
-else:
-    cols_order = [
-        "date",
-        "player",
-        "country",
-        "overs",
-        "balls",
-        "maidens",
-        "runs",
-        "wickets",
-        "average",
-        "economy",
-        "strike_rate",
-        "innings",
-        "participation",
-        "opposition",
-        "ground",
-    ]
-cols_order = [col for col in cols_order if col in df.columns]
-df = df[cols_order]
 
 
 # %%
@@ -498,9 +382,38 @@ df = df[cols_order]
 
 
 def clean_bowling_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Cleans and processes bowling data in a pandas DataFrame for ESPNcricinfo statistics.
+
+    This function performs a series of cleaning, transformation, and computation steps on a bowling statistics DataFrame.
+    It standardizes column names, extracts additional information, computes new metrics, and ensures proper data formats.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The input DataFrame containing raw bowling data. Expected column names include abbreviations or
+        raw formats such as "Mat", "Inns", "Mdns", "Wkts", "BBI", "Ave", "Econ", "SR", etc.
+
+    Returns
+    -------
+    pd.DataFrame
+        A cleaned and processed bowling DataFrame with standardized column names, computed metrics, and consistent data formats.
+
+    Notes
+    -----
+    - The function handles both "career view" and "innings view" based on the presence of the "matches" column.
+    - Columns are renamed to more descriptive names (e.g., "Mat" to "matches", "Mdns" to "maidens", "BBI" to "best_bowling_innings").
+    - Participation status (e.g., "absent", "dnb", "tdnb", "sub") is determined based on the "overs" column.
+    - Bowling averages are calculated as `runs / wickets`, and economy rates are recomputed to avoid rounding issues.
+    - Country information is extracted from the "player" column if present.
+    - The "span" column, if available, is split into "start" and "end" years.
+    - Approximate balls are calculated from the "overs" column as `(trunc(overs) * 6 + (overs % 1) * 10)`.
+
+    """
 
     # Cast to string then replace
     df = df.replace("-", np.nan)
+
     # Drop and/or rename columns
     df.columns = df.columns.str.lower()
     if "unnamed: 8" in df.columns:
@@ -518,57 +431,51 @@ def clean_bowling_data(df: pd.DataFrame) -> pd.DataFrame:
             "sr": "strike_rate",
             "4": "four_wickets",
             "5": "five_wickets",
-            "10": "tenwickets",
+            "10": "ten_wickets",
             "start date": "date",
         }
     )
 
-    # Career view
-    if "matches" in df.columns:
-        # Add columns
-        if "span" in df.columns:
-            df["start"] = df["span"].str.split("-").str[0]
-            df["end"] = df["span"].str.split("-").str[1]
-        # Transform dtypes
-        df = dtype_clean(df)
     # Innings view
-    else:
-        # Add columns
-        df["not_out"] = df["runs"].str.contains("\\*", na=False)
-        # Clean columns
+    if "matches" not in df.columns:
         df["opposition"] = df["opposition"].str.replace(
             "v | Women| Wmn", "", regex=True
         )
         df["opposition"] = df["opposition"].apply(rename_country)
-        df["runs"] = df["runs"].str.replace("*", "")
-        # Participation status - init to b
-        df["participation"] = "b"
-        df["participation"] = np.where(
-            df["runs"].str.contains("absent", case=False),
-            "absent",
-            np.where(
-                df["runs"].str.contains("dnb", case=False),
-                "dnb",
-                np.where(
-                    df["runs"].str.contains("tdnb", case=False),
-                    "tdnb",
-                    np.where(
-                        df["runs"].str.contains("sub", case=False),
-                        "sub",
-                        df["participation"],
-                    ),
-                ),
-            ),
-        )
-        # Clean dtypes
-        df = dtype_clean(df)
 
-    # Further cleaning
-    if "balls_faced" in df.columns:
-        df["runs_numeric"] = np.where(
-            df["runs"].str.isnumeric().astype(bool).fillna(False), df["runs"], 0
-        )
-        df["strike_rate"] = df["runs_numeric"].astype(float) / df["balls_faced"] * 100
+    # Add depending on columns
+    if "span" in df.columns:
+        df["start"] = df["span"].str.split("-").str[0]
+        df["end"] = df["span"].str.split("-").str[1]
+
+    # Participation status - init to b
+    if "overs" in df.columns:
+        df["participation"] = participation_status(df, "overs")
+        # Impute non-balling overs to 0
+        df["overs"] = np.where(df["participation"] != "b", np.nan, df["overs"])
+
+    # Clean dtypes
+    df = dtype_clean(df)
+
+    # Calculate average and avoid rounding issues
+    df["average"] = df["runs"] / df["wickets"]
+
+    # Calculate (approximate) balls
+    if "balls" not in df.columns:
+        df["balls"] = np.trunc(df["overs"]) * 6 + (df["overs"] % 1) * 10
+
+    # Recompute economy to avoid rounding issues
+    # Do not recompute if difference is too large
+    threshold = 0.05
+    economy = df["runs"] / (df["balls"] / 6)
+    different = np.abs(round(economy, 2) - df["economy"]) > threshold
+    if "economy" in df.columns:
+        df["economy"] = np.where(different, df["economy"], economy)
+    else:
+        df["economy"] = economy
+
+    # (Re)Compute strike rate
+    df["strike_rate"] = df["balls"] / df["wickets"]
 
     # Extract country
     if df["player"].str.contains(r"\(", regex=True).any():
@@ -588,30 +495,32 @@ def clean_bowling_data(df: pd.DataFrame) -> pd.DataFrame:
             "end",
             "matches",
             "innings",
-            "not_outs",
+            "overs",
+            "balls",
+            "maidens",
             "runs",
-            "highscore",
-            "highscore_notout",
+            "wickets",
             "average",
-            "balls_faced",
+            "economy",
             "strike_rate",
-            "hundreds",
-            "fifties",
-            "ducks",
-            "fours",
-            "sixes",
+            "best_bowling_innings",
+            "best_bowling_match",
+            "four_wickets",
+            "five_wickets",
+            "ten_wickets",
         ]
     else:
         cols_order = [
             "date",
             "player",
             "country",
+            "overs",
+            "balls",
+            "maidens",
             "runs",
-            "not_out",
-            "minutes",
-            "balls_faced",
-            "fours",
-            "sixes",
+            "wickets",
+            "average",
+            "economy",
             "strike_rate",
             "innings",
             "participation",
@@ -620,10 +529,5 @@ def clean_bowling_data(df: pd.DataFrame) -> pd.DataFrame:
         ]
     cols_order = [col for col in cols_order if col in df.columns]
     df = df[cols_order]
+
     return df
-
-
-# %%
-test
-
-# %%
