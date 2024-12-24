@@ -32,16 +32,16 @@ def participation_status(df: pd.DataFrame, check_col: str) -> np.ndarray:
 
     """
     participation = np.where(
-        df[check_col].str.contains("absent", case=False),
+        df[check_col].str.contains("absent", case=False, na=False),
         "absent",
         np.where(
-            df[check_col].str.contains("dnb", case=False),
+            df[check_col].str.contains("dnb", case=False, na=False),
             "dnb",
             np.where(
-                df[check_col].str.contains("tdnb", case=False),
+                df[check_col].str.contains("tdnb", case=False, na=False),
                 "tdnb",
                 np.where(
-                    df[check_col].str.contains("sub", case=False),
+                    df[check_col].str.contains("sub", case=False, na=False),
                     "sub",
                     "b",
                 ),
@@ -132,24 +132,7 @@ def clean_batting_data(df: pd.DataFrame) -> pd.DataFrame:
         df["opposition"] = df["opposition"].apply(rename_country)
         df["runs"] = df["runs"].str.replace("*", "")
         # Participation status - init to b
-        df["participation"] = "b"
-        df["participation"] = np.where(
-            df["runs"].str.contains("absent", case=False),
-            "absent",
-            np.where(
-                df["runs"].str.contains("dnb", case=False),
-                "dnb",
-                np.where(
-                    df["runs"].str.contains("tdnb", case=False),
-                    "tdnb",
-                    np.where(
-                        df["runs"].str.contains("sub", case=False),
-                        "sub",
-                        df["participation"],
-                    ),
-                ),
-            ),
-        )
+        df["participation"] = participation_status(df, "runs")
         # Clean dtypes
         df = dtype_clean(df)
 
@@ -416,6 +399,19 @@ df = df.rename(
     }
 )
 
+# Add depending on columns
+if "span" in df.columns:
+    df["start"] = df["span"].str.split("-").str[0]
+    df["end"] = df["span"].str.split("-").str[1]
+
+# Clean dtypes
+# df = dtype_clean(df)
+
+
+# Participation status - init to b
+if "overs" in df.columns:
+    df["participation"] = participation_status(df, "overs")
+
 # %%
 
 # Add depending on columns
@@ -423,8 +419,12 @@ if "span" in df.columns:
     df["start"] = df["span"].str.split("-").str[0]
     df["end"] = df["span"].str.split("-").str[1]
 
-if "overs":
-    None
+# Clean dtypes
+df = dtype_clean(df)
+
+# Participation status - init to b
+if "overs" in df.columns:
+    df["participation"] = participation_status(df, "overs")
 
 # Innings view
 else:
@@ -434,25 +434,7 @@ else:
     df["opposition"] = df["opposition"].str.replace("v | Women| Wmn", "", regex=True)
     df["opposition"] = df["opposition"].apply(rename_country)
     df["runs"] = df["runs"].str.replace("*", "")
-    # Participation status - init to b
-    df["participation"] = "b"
-    df["participation"] = np.where(
-        df["runs"].str.contains("absent", case=False),
-        "absent",
-        np.where(
-            df["runs"].str.contains("dnb", case=False),
-            "dnb",
-            np.where(
-                df["runs"].str.contains("tdnb", case=False),
-                "tdnb",
-                np.where(
-                    df["runs"].str.contains("sub", case=False),
-                    "sub",
-                    df["participation"],
-                ),
-            ),
-        ),
-    )
+
     # Clean dtypes
     df = dtype_clean(df)
 
@@ -513,7 +495,6 @@ else:
     ]
 cols_order = [col for col in cols_order if col in df.columns]
 df = df[cols_order]
-return df
 
 # %%
 # Clean bowling data
