@@ -370,7 +370,9 @@ def fetch_cricinfo(
 
 # %%
 test = fetch_cricinfo(matchtype="test", sex="women", activity="bowling", view="innings")
-
+career = fetch_cricinfo(
+    matchtype="test", sex="women", activity="bowling", view="career"
+)
 
 # %%
 
@@ -399,44 +401,47 @@ df = df.rename(
     }
 )
 
+# Innings view
+if "matches" not in df.columns:
+    df["opposition"] = df["opposition"].str.replace("v | Women| Wmn", "", regex=True)
+    df["opposition"] = df["opposition"].apply(rename_country)
+
 # Add depending on columns
 if "span" in df.columns:
     df["start"] = df["span"].str.split("-").str[0]
     df["end"] = df["span"].str.split("-").str[1]
-
-# Clean dtypes
-# df = dtype_clean(df)
-
 
 # Participation status - init to b
 if "overs" in df.columns:
     df["participation"] = participation_status(df, "overs")
-
-# %%
-
-# Add depending on columns
-if "span" in df.columns:
-    df["start"] = df["span"].str.split("-").str[0]
-    df["end"] = df["span"].str.split("-").str[1]
+    # Impute non-balling overs to 0
+    df["overs"] = np.where(df["participation"] != "b", np.nan, df["overs"])
 
 # Clean dtypes
 df = dtype_clean(df)
 
-# Participation status - init to b
-if "overs" in df.columns:
-    df["participation"] = participation_status(df, "overs")
+# Calculate average and avoid rounding issues
+df["average"] = df["runs"] / df["wickets"]
 
-# Innings view
+# Calculate (approximate) balls
+if "balls" not in df.columns:
+    df["balls"] = np.trunc(df["overs"]) * 6 + (df["overs"] % 1) * 10
+
+# Recompute economy to avoid rounding issues
+# Do not recompute if difference is too large
+threshold = 0.05
+economy = df["runs"] / (df["balls"] / 6)
+different = np.abs(round(economy, 2) - df["economy"]) > threshold
+if "economy" in df.columns:
+    df["economy"] = np.where(different, economy, df["economy"])
 else:
-    # Add columns
-    df["not_out"] = df["runs"].str.contains("\\*", na=False)
-    # Clean columns
-    df["opposition"] = df["opposition"].str.replace("v | Women| Wmn", "", regex=True)
-    df["opposition"] = df["opposition"].apply(rename_country)
-    df["runs"] = df["runs"].str.replace("*", "")
+    df["economy"] = economy
 
-    # Clean dtypes
-    df = dtype_clean(df)
+# Recompute strike rate
+
+
+# %%
+
 
 # Further cleaning
 if "balls_faced" in df.columns:
